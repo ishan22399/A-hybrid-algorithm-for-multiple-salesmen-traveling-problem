@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteOptima - Advanced Delivery Route Optimization</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-route"></i>
+                <h1>RouteOptima</h1>
+            </div>
+            <div class="sidebar-content">
+                <div class="control-section">
+                    <h2><i class="fas fa-sliders-h"></i> Controls</h2>
+                    <div class="form-group">
+                        <label for="numSalesmen">Delivery Agents</label>
+                        <div class="number-input">
+                            <button type="button" onclick="changeAgents(-1)">-</button>
+                            <input type="number" id="numSalesmen" min="1" max="10" value="3" readonly>
+                            <button type="button" onclick="changeAgents(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="numLocations">Delivery Locations</label>
+                        <div class="number-input">
+                            <button type="button" onclick="changeLocations(-5)">-</button>
+                            <input type="number" id="numLocations" min="5" max="50" value="15" readonly>
+                            <button type="button" onclick="changeLocations(5)">+</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="algorithm">Optimization Algorithm</label>
+                        <select id="algorithm" class="select-style">
+                            <option value="smo-aco">SMO-ACO Hybrid</option>
+                            <option value="smo">Spider Monkey Only</option>
+                            <option value="aco">Ant Colony Only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <select id="city" class="select-style" onchange="changeCity()">
+                            <option value="bangalore">Bangalore</option>
+                            <option value="mumbai">Mumbai</option>
+                            <option value="delhi">Delhi</option>
+                            <option value="hyderabad">Hyderabad</option>
+                            <option value="chennai">Chennai</option>
+                        </select>
+                    </div>
+                    <div class="btn-group">
+                        <button id="generateBtn" class="btn primary"><i class="fas fa-map-marker-alt"></i> Generate Orders</button>
+                        <button id="solveButton" class="btn success"><i class="fas fa-play"></i> Optimize Routes</button>
+                        <button id="clearBtn" class="btn danger"><i class="fas fa-trash"></i> Reset</button>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <h2><i class="fas fa-chart-line"></i> Statistics</h2>
+                    <div id="stats" class="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-route"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="totalDistance">0 km</div>
+                                <div class="stat-label">Total Distance</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="computationTime">0 ms</div>
+                                <div class="stat-label">Processing Time</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-box"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="locationsPerAgent">0</div>
+                                <div class="stat-label">Orders per Agent</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="legend-section">
+                    <h2><i class="fas fa-info-circle"></i> Legend</h2>
+                    <div class="legend-container">
+                        <div class="legend-item">
+                            <div class="legend-icon hub"><i class="fas fa-warehouse"></i></div>
+                            <div class="legend-text">Distribution Center</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon location"><i class="fas fa-house-user"></i></div>
+                            <div class="legend-text">Delivery Location</div>
+                        </div>
+                        <div id="agents-legend"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="powered-by">
+                <span>Powered by SMO-ACO Hybrid Algorithm</span>
+                <p class="copyright">&copy; 2025 RouteOptima</p>
+            </div>
+        </nav>
+
+        <main>
+            <div class="top-bar">
+                <h2 id="city-title">Bangalore Route Optimization</h2>
+                <div class="simulation-controls">
+                    <div class="timeline-container">
+                        <input type="range" id="simulation-timeline" min="0" max="100" value="0">
+                        <div class="timeline-labels">
+                            <span>Start</span>
+                            <span>End</span>
+                        </div>
+                    </div>
+                    <button id="play-pause-btn" class="btn primary"><i class="fas fa-play"></i></button>
+                    <button id="restart-btn" class="btn secondary"><i class="fas fa-redo"></i></button>
+                </div>
+                <div class="speed-control">
+                    <label>Speed:</label>
+                    <select id="simulation-speed">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="2">2x</option>
+                        <option value="5">5x</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="map-container">
+                <div id="visualization-map"></div>
+                <div class="map-toggle-controls">
+                    <button class="map-toggle-btn" id="fullscreen-btn" title="Toggle fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="map-toggle-btn" id="reset-size-btn" title="Reset map size">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                </div>
+                <div id="loading" class="hidden">
+                    <div class="loader">
+                        <div class="loader-inner"></div>
+                        <span id="loading-text">Calculating optimal routes...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-panel" id="details-panel">
+                <div class="resize-handle" id="resize-handle"></div>
+                <div class="agent-details">
+                    <h3><i class="fas fa-user-astronaut"></i> Delivery Agent Details</h3>
+                    <div id="agent-details-content">
+                        <p>Select an agent on the map to view details</p>
+                    </div>
+                </div>
+                <div class="route-details">
+                    <h3><i class="fas fa-route"></i> Route Summary</h3>
+                    <div id="route-details-content"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Order Details -->
+    <div id="order-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Order Details</h2>
+            <div id="order-details"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
